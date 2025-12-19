@@ -1,0 +1,12 @@
+plugins {
+    id 'java'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Vulnerable log4j version (CVE-2021-44228, CVSS 10)
+    implementation 'org.apache.logging.log4j:log4j-core:2.14.1'
+}
