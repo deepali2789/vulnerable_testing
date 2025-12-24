@@ -1,11 +1,13 @@
 package com.example;
 
-import org.apache.commons.lang3.StringUtils;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+@SpringBootApplication
 public class App {
     public static void main(String[] args) {
-        String input = "jfrog curation demo";
-        System.out.println(StringUtils.capitalize(input));
+        SpringApplication.run(App.class, args);
     }
 }
+
 
