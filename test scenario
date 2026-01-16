@@ -1,0 +1,151 @@
+Jenkins end-to-end scenario test plan (JFrog Xray + Curation)
+1) Purpose & success criteria
+Purpose: Validate that a Jenkins continuous integration/continuous delivery (CI/CD) pipeline can build an application, publish artifacts to JFrog Artifactory, trigger/consume JFrog Xray scans, and enforce JFrog Curation policies—end to end—without manual intervention (unless explicitly required for an approval gate).
+Success criteria (pass conditions):
+
+Pipeline runs from source checkout → build → publish → scan → enforce policy → promote/release (or fail) exactly as designed.
+Xray produces scan results for the published build/artifacts, and the pipeline can act on them (fail/warn/allow).
+Curation blocks disallowed packages/artifacts during dependency resolution or artifact consumption (per your policy).
+Evidence captured: Jenkins console logs, build info, Xray scan report/status, Curation decision logs, Artifactory artifact metadata.
+
+
+2) In-scope / out-of-scope
+In-scope
+
+Jenkins pipeline execution and stage gating behavior
+Artifactory publish + build-info traceability
+Xray scan initiation and results evaluation (vuln + license, if applicable)
+Curation policy enforcement (allow/deny/approve flow)
+Notifications (if configured): email/Slack/MS Teams, etc.
+Auditability: logs and artifacts retained for compliance
+
+Out-of-scope (unless you want to add later)
+
+Performance/load testing of scans at scale
+Disaster recovery / failover validation
+Full infrastructure hardening review (beyond required credentials/permissions)
+
+
+3) Test environment & prerequisites
+Environment
+
+Jenkins controller + agents (document OS, version, network zones)
+JFrog platform endpoints accessible from agents:
+
+Artifactory
+Xray
+Curation
+
+
+Source repository (Git) reachable from Jenkins
+
+Credentials & permissions
+
+Jenkins credentials for JFrog access (token/service account) with least privilege:
+
+Publish to target repo(s)
+Read build info / scan status
+Query Xray results (as required)
+
+
+Curation policy in place and assigned to the relevant repos/virtual repos used for dependency resolution and/or artifact consumption.
+
+Pipeline instrumentation
+
+Build publishes build-info (so Xray can correlate build → dependencies/artifacts).
+Pipeline has a defined rule for handling Xray/Curation outcomes (fail-fast vs soft-fail).
+
+Evidence storage
+
+Jenkins build logs retained (e.g., 30–90 days)
+Reports archived as Jenkins artifacts (scan summaries, SBOM if generated)
+
+
+4) Test data setup (recommended)
+Prepare at least three dependency/artifact scenarios:
+
+Clean/Allowed: known-good dependencies (should pass).
+Vulnerable: includes a dependency that triggers an Xray vulnerability policy (should fail or gate).
+Curated/Blocked: includes a dependency/package that is denied by Curation policy (should block at resolve time or consumption time).
+
+If you can’t introduce real vulnerable packages, simulate via a policy rule against a specific package name/version range in a controlled test repo.
+
+5) Jenkins pipeline stages to validate (reference flow)
+
+Checkout: pull code from Git.
+Build: compile/package.
+Unit tests: run and publish results.
+Dependency resolution via curated repo: ensure dependencies come through the curated/virtual repository where Curation applies.
+Publish artifact to Artifactory: upload artifact + metadata.
+Publish build-info: link dependencies, environment, and VCS details.
+Xray scan trigger / watch evaluation: scan build/artifact.
+Quality gate: pipeline evaluates Xray/Curation outcomes:
+
+pass → proceed
+warn → proceed with annotation (if allowed)
+fail → stop and notify
+
+
+Promote / release: promote artifact to next repo (optional).
+Post actions: archive reports, notify, cleanup.
+
+
+6) Detailed test cases (end-to-end)
+TC-01: Baseline “allowed” build passes end-to-end
+Objective: Confirm the happy path works with no policy violations.
+Steps:
+
+Trigger pipeline on a branch/tag that uses only allowed dependencies.
+Build completes, tests run, artifact published, build-info published.
+Xray scan runs and returns no violations above threshold.
+Pipeline passes quality gate and (if configured) promotes artifact.
+Expected results:
+
+
+Jenkins build SUCCESS.
+Artifact present in target Artifactory repo with correct version.
+Xray shows scan completed for the build/artifact with no failing violations.
+Curation logs show allowed decisions (no blocks).
+Evidence to capture:
+Jenkins console log + stage view
+Artifactory artifact path + build-info reference
+Xray scan summary/export (as available)
+Curation decision/audit log excerpt
+
+TC-02: Xray vulnerability violation blocks pipeline (fail-fast)
+Objective: Validate pipeline fails when Xray policy violation is detected.
+Steps:
+
+Trigger pipeline using the “vulnerable” dependency set.
+Publish artifact + build-info.
+Wait for Xray evaluation.
+Gate checks Xray results against policy thresholds (e.g., Critical/High).
+Expected results:
+
+
+Jenkins build FAILED (or UNSTABLE, depending on desired behavior) at the quality gate stage.
+Notification sent with violation summary.
+Artifact may remain in staging repo but must not be promoted.
+Evidence to capture:
+Jenkins failure stage log with clear reason
+Xray violation details (issue IDs, severity, impacted component)
+Promotion step skipped/blocked record
+
+TC-03: Curation blocks disallowed dependency during resolve
+Objective: Ensure dependency download is blocked by Curation policy and pipeline stops with a clear error.
+Steps:
+
+Configure the build to resolve dependencies via curated repo/virtual repo.
+Trigger pipeline using the “curated/blocked” dependency.
+Observe dependency resolution step.
+Expected results:
+
+
+Build fails during dependency fetch/resolve with a curation denial signal.
+No artifact published (or pipeline stops before publish).
+Curation logs show a blocked decision for the denied package/version.
+Evidence to capture:
+Jenkins log showing dependency request denied
+Curation audit entry with policy/rule that triggered
+Confirmation no artifact/build-info published (or marked incomplete)
+
