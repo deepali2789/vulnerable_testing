@@ -1,13 +1,14 @@
 package com.example;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.apache.commons.text.StringEscapeUtils;
+import org.apache.commons.text.similarity.LevenshteinDistance;
 
-@SpringBootApplication
 public class App {
-    public static void main(String[] args) {
-        SpringApplication.run(App.class, args);
-    }
+  public static void main(String[] args) {
+    String input = "<tag>Hello \"world\"</tag>";
+    System.out.println("Escaped: " + StringEscapeUtils.escapeHtml4(input));
+
+    int dist = LevenshteinDistance.getDefaultInstance().apply("curation", "curation-policy");
+    System.out.println("Levenshtein distance: " + dist);
+  }
 }
-
-
