@@ -1,0 +1,30 @@
+quick status update on the JFrog Xray and Curation activities. We are ~95% complete. The only remaining item is one end-to-end scenario test, which is pending execution via Jenkins.
+Completed
+
+JFrog Xray
+
+Installation completed
+Feature testing completed
+
+
+JFrog Curation
+
+Installation completed
+Curation policy creation completed
+
+
+
+Test cases covered (completed)
+
+Xray installation validation and connectivity checks
+Repository indexing and scan execution
+Vulnerability and license findings verification
+Watch/policy rule behavior validation and alert generation
+Curation policy enforcement (block/allow) for targeted packages/artifacts
+Audit/log verification for policy actions
+
+Pending
+
+End-to-end scenario testing using Jenkins (pipeline-triggered build + artifact scan + policy enforcement/approval flow)
+
+We are coordinating to complete the Jenkins-based scenario test and will share the final closure update immediately after execution
