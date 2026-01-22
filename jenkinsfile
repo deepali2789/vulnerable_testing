@@ -1,0 +1,64 @@
+pipeline {
+  agent any
+
+  options {
+    timestamps()
+  }
+
+  environment {
+    // Make dependency downloads deterministic for this job (no agent-level cache masking policy)
+    GRADLE_USER_HOME = "${WORKSPACE}/.gradle"
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        // Optional: ensures a clean workspace each run
+        deleteDir()
+        checkout scm
+      }
+    }
+
+    stage('Prep') {
+      steps {
+        sh '''#!/bin/bash
+          set -euo pipefail
+          chmod +x ./gradlew
+          ./gradlew --version
+        '''
+      }
+    }
+
+    stage('Resolve dependencies (evidence)') {
+      steps {
+        sh '''#!/bin/bash
+          set -euo pipefail
+          mkdir -p build_evidence
+
+          # Force fresh resolution/download attempts (this is where curation typically blocks)
+          ./gradlew :app:dependencies --configuration runtimeClasspath --refresh-dependencies --info | tee build_evidence/runtimeClasspath.txt
+
+          # Optional: pinpoint why a dependency/version was selected
+          ./gradlew :app:dependencyInsight --dependency log4j-core --configuration runtimeClasspath --refresh-dependencies --info | tee build_evidence/insight_log4j-core.txt
+          ./gradlew :app:dependencyInsight --dependency jackson-databind --configuration runtimeClasspath --refresh-dependencies --info | tee build_evidence/insight_jackson-databind.txt
+        '''
+      }
+    }
+
+    stage('Build (skip tests)') {
+      steps {
+        sh '''#!/bin/bash
+          set -euo pipefail
+          ./gradlew :app:build -x test --refresh-dependencies --info | tee build_evidence/build.txt
+        '''
+      }
+    }
+  }
+
+  post {
+    always {
+      archiveArtifacts artifacts: 'build_evidence/*.txt', fingerprint: true
+      junit testResults: '**/build/test-results/test/*.xml', allowEmptyResults: true
+    }
+  }
+}
